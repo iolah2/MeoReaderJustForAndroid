@@ -6,6 +6,7 @@ using Dapper;
 using System.Runtime.CompilerServices;
 using static System.Net.Mime.MediaTypeNames;
 using System.Runtime.Intrinsics.X86;
+using Android.Text;
 
 namespace MeoReaderJustForAndroid
 {
@@ -41,7 +42,8 @@ namespace MeoReaderJustForAndroid
 
             int? result = await _databaseService.GetFirstDolgozoszam();//.Result;
             _dolgozoSzamInput.Text = result?.ToString() ?? "";
-
+            _darabszamInput.TextChanged += ValidalDarabszam;
+            _selejtInput.TextChanged += ValidalDarabszam;
             _saveButton.Click += async (sender, e) => await OnSaveClicked();
         }
 
@@ -117,6 +119,28 @@ namespace MeoReaderJustForAndroid
                     else _mlTetelAzText.Text = "(üres)";
                 }
             };
+        }
+
+        private void ValidalDarabszam(object sender, TextChangedEventArgs e)
+        {
+            int darabszam = int.TryParse(_darabszamInput.Text, out int d) ? d : 0;
+            int selejt = int.TryParse(_selejtInput.Text, out int s) ? s : 0;
+
+            if (darabszam <= 0)
+            {
+                _darabszamInput.Error = "A darabszámnak nagyobbnak kell lennie 0-nál!";
+                _selejtInput.Error = null; // Selejt mezõ törlése, ha elõzõleg volt benne hiba
+            }
+            else if (darabszam < selejt)
+            {
+                _selejtInput.Error = "A selejt nem lehet nagyobb, mint a darabszám!";
+                _darabszamInput.Error = null; // Darabszám mezõ törlése, ha elõzõleg volt benne hiba
+            }
+            else
+            {
+                _darabszamInput.Error = null; // Minden hiba törlése, ha az értékek helyesek
+                _selejtInput.Error = null;
+            }
         }
 
         private async Task OnSaveClicked()

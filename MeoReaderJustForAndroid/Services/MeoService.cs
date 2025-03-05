@@ -11,7 +11,7 @@ namespace MeoReaderJustForAndroid.Services
 
         public MeoService()
         {
-            _connectionString = "Server=ISTI13-PC\\sqlexpress2022;Database=Tekszol_DEV;User Id = sa; Password = sql;Encrypt=False; TrustServerCertificate=True;";
+            _connectionString = "Server=10.0.2.2,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
             //_connectionString = "Server=ISTI13-PC\\SQLEXPRESS2022;Database=Tekszol_DEV;Integrated security=True";
             try
             {
@@ -63,7 +63,8 @@ namespace MeoReaderJustForAndroid.Services
             await connection.OpenAsync();
 
             var query = "SELECT Név FROM Dolgozók WHERE Dolgozószám = @DolgozoSzam";
-            return await connection.QueryFirstOrDefaultAsync<string>(query, new { DolgozoSzam = dolgozoSzam });
+            var result = await connection.QueryFirstOrDefaultAsync<string>(query, new { DolgozoSzam = dolgozoSzam });
+            return result ?? "Nincs ilyen dolgozó";
         }
         
 
