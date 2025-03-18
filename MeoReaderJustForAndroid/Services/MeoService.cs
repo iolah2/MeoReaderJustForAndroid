@@ -11,8 +11,9 @@ namespace MeoReaderJustForAndroid.Services
 
         public MeoService()
         {
-            _connectionString = "Server=10.0.2.2,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
-            //_connectionString = "Server=ISTI13-PC\\SQLEXPRESS2022;Database=Tekszol_DEV;Integrated security=True";
+            //_connectionString = "Server=10.0.2.2,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
+           // _connectionString = "Server=192.168.1.118,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
+            _connectionString = "Server=192.168.0.19;Database=Tekszol_DEV;User Id=sa;Password=sql;TrustServerCertificate=True;";
             try
             {
                 using var connection = new SqlConnection(_connectionString);
