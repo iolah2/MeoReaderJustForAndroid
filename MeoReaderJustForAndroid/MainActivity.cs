@@ -7,12 +7,15 @@ using System.Runtime.CompilerServices;
 using static System.Net.Mime.MediaTypeNames;
 using System.Runtime.Intrinsics.X86;
 using Android.Text;
+using Android.Content;
+using Android.Runtime;
 
 namespace MeoReaderJustForAndroid
 {
     [Activity(Label = "MeoBeolvasas", MainLauncher = true)]
     public class MainActivity : Activity
     {
+        private const int REQUEST_CODE_VONALKOD_INPUT = 1001;
         private EditText _dolgozoSzamInput, _vonalkodInput, _darabszamInput, _selejtInput, _megjegyzesInput;
         private TextView _dolgozoNevText, _mlTetelAzText;
         private Button _saveButton;
@@ -42,10 +45,23 @@ namespace MeoReaderJustForAndroid
 
             int? result = await _databaseService.GetFirstDolgozoszam();//.Result;
             _dolgozoSzamInput.Text = result?.ToString() ?? "";
+            if(result is int)
+            _dolgozoNevText.Text =  await Task.Run(() => _databaseService.GetDolgozoNev(result.ToString()));
             _darabszamInput.TextChanged += ValidalDarabszam;
             _selejtInput.TextChanged += ValidalDarabszam;
             _saveButton.Click += async (sender, e) => await OnSaveClicked();
         }
+
+        protected override void OnActivityResult(int requestCode, [GeneratedEnum] Result resultCode, Intent? data)
+        {         
+            base.OnActivityResult(requestCode, resultCode, data);
+
+            if (requestCode == REQUEST_CODE_VONALKOD_INPUT && resultCode == Result.Ok && data != null)
+            {
+                string scannedBarcode = data.GetStringExtra("SCANNED_BARCODE");
+                _vonalkodInput.Text = scannedBarcode; // Beállítja az olvasott vonalkódot a mezõbe
+            }
+        }    
 
         string dolgozoszamLast = null, vonalkodLast = null;
 
@@ -101,7 +117,8 @@ namespace MeoReaderJustForAndroid
 
                     if (!string.IsNullOrEmpty(vonalkod))
                     {
-                        int? mlTetelAz = await Task.Run(() => _databaseService.GetMlTetelAZ(vonalkod));
+                        int? mlTetelAz, gyartando;
+                        (mlTetelAz, gyartando) = await Task.Run(() => _databaseService.GetMlTetelAZ(vonalkod));
                         RunOnUiThread(() =>
                         {
                             if (mlTetelAz is int)
@@ -114,12 +131,19 @@ namespace MeoReaderJustForAndroid
                                 _mlTetelAzText.Text = "Nincs a beolvasott vonalkódalapján lekérhetõ munkalap mûvelet!";
                                 _mlTetelAzText.SetTextColor(Android.Graphics.Color.Red);
                             }
+
+                            _darabszamInput.Text = gyartando?.ToString() ?? "1";
                         });
                     }
                     else _mlTetelAzText.Text = "(üres)";
                 }
+                else if (e.HasFocus)
+                {
+                    Intent intent = new Intent(this, typeof(BarcodeScannerActivity));
+                    StartActivityForResult(intent, REQUEST_CODE_VONALKOD_INPUT);
+                }
             };
-        }
+        }        
 
         private void ValidalDarabszam(object sender, TextChangedEventArgs e)
         {

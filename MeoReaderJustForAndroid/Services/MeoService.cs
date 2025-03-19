@@ -13,7 +13,9 @@ namespace MeoReaderJustForAndroid.Services
         {
             //_connectionString = "Server=10.0.2.2,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
            // _connectionString = "Server=192.168.1.118,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
-            _connectionString = "Server=192.168.0.19;Database=Tekszol_DEV;User Id=sa;Password=sql;TrustServerCertificate=True;";
+            _connectionString = "Server=192.168.100.165;Database=Tekszol_DEV;User Id=sa;Password=sql;TrustServerCertificate=True;";
+            //_connectionString = "Server=10.0.2.2,1433;Database=Tekszol_DEV;User Id=sa;Password=sql;TrustServerCertificate=True;";
+
             try
             {
                 using var connection = new SqlConnection(_connectionString);
@@ -71,7 +73,7 @@ namespace MeoReaderJustForAndroid.Services
 
         // SQL lekérdezés: technológia megnevezése vonalkód alapján
         //private async Task<string> GetTechnologiaMegnevezes(string vonalkod)
-        public async Task<int?> GetMlTetelAZ(string vonalkod)
+        public async Task<(int?, int?)> GetMlTetelAZ(string vonalkod)
         {            
             if (!vonalkod.Contains("/"))
                 throw new Exception($"A beolvasót vonalkoód ({vonalkod})rossz formátumú!\n 7 számjegy / majd 3-5 szám!");
@@ -82,9 +84,9 @@ namespace MeoReaderJustForAndroid.Services
             using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
 
-            var query = "select [Mltetel AZ] from [Munkalapok részletek] where Munkalap = '" + vonalkodParts[0] +$"' and Műveletszám = {muveletszam}";
+            var query = "select [Mltetel AZ],Gyartando from [Munkalapok részletek] where Munkalap = '" + vonalkodParts[0] +$"' and Műveletszám = {muveletszam}";
             
-            return await connection.QueryFirstOrDefaultAsync<int?>(query);
+            return await connection.QueryFirstOrDefaultAsync<(int?, int?)>(query);
         }
 
         /*
