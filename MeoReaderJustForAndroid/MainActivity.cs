@@ -9,6 +9,7 @@ using System.Runtime.Intrinsics.X86;
 using Android.Text;
 using Android.Content;
 using Android.Runtime;
+using Android.Views;
 
 namespace MeoReaderJustForAndroid
 {
@@ -26,8 +27,15 @@ namespace MeoReaderJustForAndroid
         {
             base.OnCreate(savedInstanceState);
             SetContentView(Resource.Layout.activity_main);
-
-            _databaseService = new MeoService();
+            try
+            {
+                _databaseService = new MeoService(this);
+            }
+            catch (Exception ex)
+            {
+                Toast.MakeText(ApplicationContext, "Alkalmazás bezárul!\nOka:" + ex.Message, ToastLength.Short).Show();
+                FinishAffinity();
+            }
             _toastService = new ToastService();
 
             _dolgozoSzamInput = FindViewById<EditText>(Resource.Id.dolgozoszamInput);
@@ -165,6 +173,22 @@ namespace MeoReaderJustForAndroid
                 _darabszamInput.Error = null; // Minden hiba törlése, ha az értékek helyesek
                 _selejtInput.Error = null;
             }
+        }
+
+        public override bool OnCreateOptionsMenu(IMenu menu)
+        {
+            MenuInflater.Inflate(Resource.Menu.top_menu, menu);
+            return base.OnCreateOptionsMenu(menu);
+        }
+
+        public override bool OnOptionsItemSelected(IMenuItem item)
+        {
+            if (item.ItemId == Resource.Id.menu_settings)
+            {
+                StartActivity(typeof(SettingsActivity));
+                return true;
+            }
+            return base.OnOptionsItemSelected(item);
         }
 
         private async Task OnSaveClicked()

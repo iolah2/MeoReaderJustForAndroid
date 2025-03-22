@@ -2,29 +2,90 @@
 using Dapper;
 using MeoReaderJustForAndroid.Models;
 using System.Reflection.Metadata.Ecma335;
+using Android.Content;
 
 namespace MeoReaderJustForAndroid.Services
 {
     public class MeoService
     {
-        private readonly string _connectionString;
+        private string _connectionString;
+        private readonly bool _connectionAvailable;
+        /*dolgozó tárolása
+TODO
+  🧠 Hogy tárolhatod le?
+🔹 Például, amikor a dolgozót kiválasztják (akár MainActivity-ben):
+csharp
+Másolás
+Szerkesztés
+var prefs = Application.Context.GetSharedPreferences("AppSettings", FileCreationMode.Private);
+var editor = prefs.Edit();
+editor.PutInt("dolgozo_id", 12345); // vagy amit kiválasztott a felhasználó
+editor.Apply();
+🔹 Majd amikor újra elindul az app:
+csharp
+Másolás
+Szerkesztés
+var prefs = Application.Context.GetSharedPreferences("AppSettings", FileCreationMode.Private);
+int dolgozoId = prefs.GetInt("dolgozo_id", -1); // -1 ha nincs még tárolva
+Így az alkalmazás megjegyzi a korábban kiválasztott dolgozót, és akár automatikusan be is töltheti, vagy előválaszthatja.
 
-        public MeoService()
+
+  */
+        public MeoService(Context context)
         {
-            //_connectionString = "Server=10.0.2.2,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
-           // _connectionString = "Server=192.168.1.118,1433;Database=Tekszol_DEV;User Id = sa;Password = sql;TrustServerCertificate=True;";// TrustServerCertificate=True;Encrypt=False;";// Password = sql;Encrypt=False; TrustServerCertificate=True;";
-            _connectionString = "Server=192.168.100.165;Database=Tekszol_DEV;User Id=sa;Password=sql;TrustServerCertificate=True;";
-            //_connectionString = "Server=10.0.2.2,1433;Database=Tekszol_DEV;User Id=sa;Password=sql;TrustServerCertificate=True;";
+            SetConnesctionString(context);
 
+            // Szinkron módon, timeout-tal teszteljük a kapcsolatot
+            _connectionAvailable = TestConnectionWithTimeout(_connectionString, timeoutSeconds: 5);
+
+            if (!_connectionAvailable)
+            {
+                Android.Util.Log.Warn("MeoService", "Nem sikerült csatlakozni az adatbázishoz. Beállítások megnyitása...");
+
+                var intent = new Intent(Application.Context, typeof(SettingsActivity));
+                intent.AddFlags(ActivityFlags.NewTask);
+                Application.Context.StartActivity(intent);
+                SetConnesctionString(context);
+                _connectionAvailable = TestConnectionWithTimeout(_connectionString, timeoutSeconds: 5);
+                if (!_connectionAvailable)
+                {
+                    throw new Exception("A kapcsolat nem lett helyesen beállítva, az alkalmazás bezár.");
+                }
+            }
+        }
+
+        private void SetConnesctionString(Context context)
+        {
+            var prefs = context.GetSharedPreferences("AppSettings", FileCreationMode.Private);
+            string ip = prefs.GetString("server_ip", "192.168.1.117");
+            string db = prefs.GetString("db_name", "Tekszol_DEV");
+            string user = prefs.GetString("db_user", "sa");
+            string pass = prefs.GetString("db_pass", "sql");
+
+            _connectionString = $"Server={ip};Database={db};User Id={user};Password={pass};TrustServerCertificate=True;";
+        }
+
+        private bool TestConnectionWithTimeout(string connectionString, int timeoutSeconds)
+        {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                connection.Open();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+                using var connection = new SqlConnection(connectionString);
+                var task = connection.OpenAsync(cts.Token);
+                task.Wait(cts.Token);
+                connection.Close();
+                return true;
             }
             catch (Exception ex)
             {
-                ;
+                Android.Util.Log.Error("MeoService", $"Kapcsolódási hiba: {ex.Message}");
+                return false;
             }
+        }
+
+        public SqlConnection GetConnection()
+        {
+            return new SqlConnection(_connectionString);
         }
 
         public async Task<List<MeoEllenorzes>> GetAllRecordsAsync()
