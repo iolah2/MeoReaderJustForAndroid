@@ -8,8 +8,10 @@ namespace MeoReaderJustForAndroid.Services
 {
     public class MeoService
     {
+        public const int TIMEOUT_SECONDS = 30;
         private string _connectionString;
-        private readonly bool _connectionAvailable;
+        private bool _connectionAvailable;
+        public bool IsConnectionAvailable => _connectionAvailable;
         /*dolgozó tárolása
 TODO
   🧠 Hogy tárolhatod le?
@@ -36,22 +38,34 @@ int dolgozoId = prefs.GetInt("dolgozo_id", -1); // -1 ha nincs még tárolva
             SetConnesctionString(context);
 
             // Szinkron módon, timeout-tal teszteljük a kapcsolatot
-            _connectionAvailable = TestConnectionWithTimeout(_connectionString, timeoutSeconds: 5);
+            _connectionAvailable = TestConnectionWithTimeout(_connectionString, timeoutSeconds: TIMEOUT_SECONDS);
 
-            if (!_connectionAvailable)
-            {
-                Android.Util.Log.Warn("MeoService", "Nem sikerült csatlakozni az adatbázishoz. Beállítások megnyitása...");
+            //if (!_connectionAvailable)
+            //{
+            //    Android.Util.Log.Warn("MeoService", "Nem sikerült csatlakozni az adatbázishoz. Beállítások megnyitása...");
 
-                var intent = new Intent(Application.Context, typeof(SettingsActivity));
-                intent.AddFlags(ActivityFlags.NewTask);
-                Application.Context.StartActivity(intent);
-                SetConnesctionString(context);
-                _connectionAvailable = TestConnectionWithTimeout(_connectionString, timeoutSeconds: 5);
-                if (!_connectionAvailable)
-                {
-                    throw new Exception("A kapcsolat nem lett helyesen beállítva, az alkalmazás bezár.");
-                }
-            }
+            //    var intent = new Intent(Application.Context, typeof(SettingsActivity));
+            //    intent.AddFlags(ActivityFlags.NewTask);
+            //    Application.Context.StartActivity(intent);
+            //    SetConnesctionString(context);
+            //    _connectionAvailable = TestConnectionWithTimeout(_connectionString, timeoutSeconds: TIMEOUT_SECONDS);
+            //    if (!_connectionAvailable)
+            //    {
+            //        throw new Exception("A kapcsolat nem lett helyesen beállítva, az alkalmazás bezár.");
+            //    }
+            //}
+        }
+
+        public bool Get_connectionAvailable()
+        {
+            return _connectionAvailable;
+        }
+
+        public bool TryReconnect(Context context)
+        {
+            SetConnesctionString(context);
+            _connectionAvailable = TestConnectionWithTimeout(_connectionString, timeoutSeconds: TIMEOUT_SECONDS);
+            return _connectionAvailable;
         }
 
         private void SetConnesctionString(Context context)

@@ -10,6 +10,7 @@ using Android.Text;
 using Android.Content;
 using Android.Runtime;
 using Android.Views;
+using Android.SE.Omapi;
 
 namespace MeoReaderJustForAndroid
 {
@@ -17,51 +18,54 @@ namespace MeoReaderJustForAndroid
     public class MainActivity : Activity
     {
         private const int REQUEST_CODE_VONALKOD_INPUT = 1001;
+        private const int SETTINGS_REQUEST_CODE = 1002;
+        private MeoService _databaseService;
         private EditText _dolgozoSzamInput, _vonalkodInput, _darabszamInput, _selejtInput, _megjegyzesInput;
         private TextView _dolgozoNevText, _mlTetelAzText;
         private Button _saveButton;
-        private MeoService _databaseService;
         private IToastService _toastService;
 
         protected override async void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-            SetContentView(Resource.Layout.activity_main);
-            try
+
+            _databaseService = new MeoService(this);
+
+            if (!_databaseService.IsConnectionAvailable)
             {
-                _databaseService = new MeoService(this);
+                var intent = new Intent(this, typeof(SettingsActivity));
+                StartActivityForResult(intent, SETTINGS_REQUEST_CODE);
             }
-            catch (Exception ex)
+            else
             {
-                Toast.MakeText(ApplicationContext, "Alkalmazás bezárul!\nOka:" + ex.Message, ToastLength.Short).Show();
-                FinishAffinity();
+                SetContentView(Resource.Layout.activity_main);
+                _toastService = new ToastService();
+
+                _dolgozoSzamInput = FindViewById<EditText>(Resource.Id.dolgozoszamInput);
+                _dolgozoNevText = FindViewById<TextView>(Resource.Id.dolgozoNevText);
+                SubscribeDolgozoSzamChange();
+
+                _vonalkodInput = FindViewById<EditText>(Resource.Id.vonalkodInput);
+                _mlTetelAzText = FindViewById<TextView>(Resource.Id.mlTetelAzText);
+                SubscribeVonalkodChange();
+                _darabszamInput = FindViewById<EditText>(Resource.Id.darabszamInput);
+                _selejtInput = FindViewById<EditText>(Resource.Id.selejtInput);
+                _megjegyzesInput = FindViewById<EditText>(Resource.Id.megjegyzesInput);
+                _saveButton = FindViewById<Button>(Resource.Id.saveButton);
+
+
+                int? result = await _databaseService.GetFirstDolgozoszam();//.Result;
+                _dolgozoSzamInput.Text = result?.ToString() ?? "";
+                if (result is int)
+                    _dolgozoNevText.Text = await Task.Run(() => _databaseService.GetDolgozoNev(result.ToString()));
+                _darabszamInput.TextChanged += ValidalDarabszam;
+                _selejtInput.TextChanged += ValidalDarabszam;
+                _saveButton.Click += async (sender, e) => await OnSaveClicked();
             }
-            _toastService = new ToastService();
-
-            _dolgozoSzamInput = FindViewById<EditText>(Resource.Id.dolgozoszamInput);
-            _dolgozoNevText = FindViewById<TextView>(Resource.Id.dolgozoNevText);
-            SubscribeDolgozoSzamChange();
-
-            _vonalkodInput = FindViewById<EditText>(Resource.Id.vonalkodInput);
-            _mlTetelAzText = FindViewById<TextView>(Resource.Id.mlTetelAzText);
-            SubscribeVonalkodChange();
-            _darabszamInput = FindViewById<EditText>(Resource.Id.darabszamInput);
-            _selejtInput = FindViewById<EditText>(Resource.Id.selejtInput);
-            _megjegyzesInput = FindViewById<EditText>(Resource.Id.megjegyzesInput);
-            _saveButton = FindViewById<Button>(Resource.Id.saveButton);
-
-
-            int? result = await _databaseService.GetFirstDolgozoszam();//.Result;
-            _dolgozoSzamInput.Text = result?.ToString() ?? "";
-            if(result is int)
-            _dolgozoNevText.Text =  await Task.Run(() => _databaseService.GetDolgozoNev(result.ToString()));
-            _darabszamInput.TextChanged += ValidalDarabszam;
-            _selejtInput.TextChanged += ValidalDarabszam;
-            _saveButton.Click += async (sender, e) => await OnSaveClicked();
         }
 
         protected override void OnActivityResult(int requestCode, [GeneratedEnum] Result resultCode, Intent? data)
-        {         
+        {
             base.OnActivityResult(requestCode, resultCode, data);
 
             if (requestCode == REQUEST_CODE_VONALKOD_INPUT && resultCode == Result.Ok && data != null)
@@ -69,7 +73,24 @@ namespace MeoReaderJustForAndroid
                 string scannedBarcode = data.GetStringExtra("SCANNED_BARCODE");
                 _vonalkodInput.Text = scannedBarcode; // Beállítja az olvasott vonalkódot a mezõbe
             }
-        }    
+            else if (requestCode == SETTINGS_REQUEST_CODE)
+            {
+                if (resultCode == Result.Ok)
+                {
+                    bool ok = _databaseService.TryReconnect(this);
+                    if (!ok)
+                    {
+                        Android.Widget.Toast.MakeText(this, "A kapcsolat nem jött létre.", ToastLength.Long).Show();
+                        FinishAffinity();
+                    }
+                }
+                else
+                {
+                    Android.Widget.Toast.MakeText(this, "Beállítás megszakadt.", ToastLength.Long).Show();
+                    FinishAffinity();
+                }
+            }
+        }
 
         string dolgozoszamLast = null, vonalkodLast = null;
 
@@ -151,7 +172,7 @@ namespace MeoReaderJustForAndroid
                     StartActivityForResult(intent, REQUEST_CODE_VONALKOD_INPUT);
                 }
             };
-        }        
+        }
 
         private void ValidalDarabszam(object sender, TextChangedEventArgs e)
         {
@@ -221,42 +242,42 @@ namespace MeoReaderJustForAndroid
             //_toastService.ShowToast("Adat elmentve!");
         }
     }
-        /*private EditText _darabszamInput;
+    /*private EditText _darabszamInput;
 private EditText _selejtInput;
 private TextView _hibaUzenet;
 
 protected override void OnCreate(Bundle savedInstanceState)
 {
-    base.OnCreate(savedInstanceState);
-    SetContentView(Resource.Layout.activity_main);
+base.OnCreate(savedInstanceState);
+SetContentView(Resource.Layout.activity_main);
 
-    _darabszamInput = FindViewById<EditText>(Resource.Id.darabszamInput);
-    _selejtInput = FindViewById<EditText>(Resource.Id.selejtInput);
-    _hibaUzenet = FindViewById<TextView>(Resource.Id.hibaUzenet);
+_darabszamInput = FindViewById<EditText>(Resource.Id.darabszamInput);
+_selejtInput = FindViewById<EditText>(Resource.Id.selejtInput);
+_hibaUzenet = FindViewById<TextView>(Resource.Id.hibaUzenet);
 
-    _darabszamInput.TextChanged += ValidalDarabszam;
-    _selejtInput.TextChanged += ValidalDarabszam;
+_darabszamInput.TextChanged += ValidalDarabszam;
+_selejtInput.TextChanged += ValidalDarabszam;
 }
 
 private void ValidalDarabszam(object sender, TextChangedEventArgs e)
 {
-    int darabszam = int.TryParse(_darabszamInput.Text, out int d) ? d : 0;
-    int selejt = int.TryParse(_selejtInput.Text, out int s) ? s : 0;
+int darabszam = int.TryParse(_darabszamInput.Text, out int d) ? d : 0;
+int selejt = int.TryParse(_selejtInput.Text, out int s) ? s : 0;
 
-    if (darabszam <= 0)
-    {
-        _hibaUzenet.Text = "A darabszámnak nagyobbnak kell lennie 0-nál!";
-        _hibaUzenet.SetTextColor(Android.Graphics.Color.Red);
-    }
-    else if (darabszam < selejt)
-    {
-        _hibaUzenet.Text = "A darabszám nem lehet kisebb a selejtnél!";
-        _hibaUzenet.SetTextColor(Android.Graphics.Color.Red);
-    }
-    else
-    {
-        _hibaUzenet.Text = "";
-    }
+if (darabszam <= 0)
+{
+    _hibaUzenet.Text = "A darabszámnak nagyobbnak kell lennie 0-nál!";
+    _hibaUzenet.SetTextColor(Android.Graphics.Color.Red);
+}
+else if (darabszam < selejt)
+{
+    _hibaUzenet.Text = "A darabszám nem lehet kisebb a selejtnél!";
+    _hibaUzenet.SetTextColor(Android.Graphics.Color.Red);
+}
+else
+{
+    _hibaUzenet.Text = "";
+}
 }*/
-    }
+}
 

@@ -38,7 +38,7 @@ namespace MeoReaderJustForAndroid.Services
                 string pass = passEditText.Text.Trim();
 
                 string testConnStr = $"Server={ip};Database={db};User Id={user};Password={pass};TrustServerCertificate=True;";
-                bool success = await TestConnectionAsync(testConnStr, timeoutSeconds: 5);
+                bool success = await TestConnectionAsync(testConnStr, timeoutSeconds: MeoService.TIMEOUT_SECONDS);
                 if (success)
                 {                  
                     var editor = prefs.Edit();
@@ -72,6 +72,25 @@ namespace MeoReaderJustForAndroid.Services
             {
                 return false;
             }
+        }
+
+        protected override void OnCreate(Bundle savedInstanceState)
+        {
+            base.OnCreate(savedInstanceState);
+            SetContentView(Resource.Layout.settings); // saját layoutod
+        }
+
+        private void OnSaveClicked()
+        {
+            // beállítások elmentése után
+            SetResult(Result.Ok);
+            Finish();
+        }
+
+        private void OnCancelClicked()
+        {
+            SetResult(Result.Canceled);
+            Finish();
         }
     }
 }
